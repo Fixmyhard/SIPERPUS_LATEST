@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\BooksExport;
 use App\Models\Book;
 use App\Models\Bookshelf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Maatwebsite\Excel\Facades\Excel;
 
 class BookController extends Controller
 {
@@ -20,7 +23,7 @@ class BookController extends Controller
         $data['bookshelves'] = Bookshelf::pluck('name', 'id');
         return view('books.create', $data);
     }
-    
+
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -65,7 +68,7 @@ class BookController extends Controller
     public function update(Request $request, $id)
     {
         $dataLama = Book::find($id);
-        
+
         $validated = $request->validate([
             'title' => 'required|max:255',
             'author' => 'required|max:255',
@@ -77,7 +80,7 @@ class BookController extends Controller
         ]);
         if ($request->hasFile('cover')) {
             if ($dataLama->cover != null) {
-                Storage::delete('app/public/cover_buku/'.$request->old_cover);
+                Storage::delete('app/public/cover_buku/' . $request->old_cover);
             }
             $path = $request->file('cover')->storeAs(
                 'public/cover_buku',
@@ -103,7 +106,7 @@ class BookController extends Controller
     public function destroy($id)
     {
         $data = Book::find($id);
-        Storage::delete('app/public/cover_buku/'.$data->cover);
+        Storage::delete('app/public/cover_buku/' . $data->cover);
         $berhasil = $data->delete();
         if ($berhasil) {
             $notification = array(
@@ -117,5 +120,16 @@ class BookController extends Controller
             );
         }
         return redirect()->route('book')->with($notification);
+    }
+    public function print()
+    {
+        $data['books'] = Book::all();
+        $pdf = Pdf::loadView('books.print', $data);
+        return $pdf->stream('DaftarBuku.pdf');
+    }
+    public function export()
+    {
+        return Excel::download(new BooksExport, 'book.xlsx');
+        
     }
 }
